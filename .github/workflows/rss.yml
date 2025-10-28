@@ -1,0 +1,38 @@
+name: Generate RSS Feed
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # 毎日0時（UTC、=日本時間9時）に実行
+  workflow_dispatch:     # 手動実行も可能
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Pythonをセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 必要なライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: RSSを生成
+        run: python main.py
+
+      - name: rss.xmlをPagesブランチにコミットして公開
+        run: |
+          mkdir public
+          mv rss.xml public/
+          cd public
+          git init
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Auto-update RSS"
+          git branch -M gh-pages
+          git push -f https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
