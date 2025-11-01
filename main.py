@@ -1,13 +1,16 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import csv
 import os
 from feedgen.feed import FeedGenerator  # RSS生成用
 
+# 出力先を絶対パスで指定
+OUTPUT_RSS_FILE = os.path.join(os.getcwd(), "rss.xml")
+
 def fetch_data(url):
     response = requests.get(url)
     data = response.json()
-    return data['items']
+    return data.get('items', [])
 
 def filter_data(items, keywords):
     return [item['Tdnet'] for item in items if any(keyword in item['Tdnet']['title'] for keyword in keywords)]
@@ -20,7 +23,7 @@ def get_market_classification(company_code):
             for row in reader:
                 if row['コード'] == company_code:
                     return row['市場・商品区分']
-                elif row['コード'].startswith(company_code[:4]):  # 上位4桁でマッチング
+                elif row['コード'].startswith(company_code[:4]):
                     return row['市場・商品区分']
     return None
 
@@ -54,7 +57,6 @@ def format_output(items):
         yahoo_finance_url = f"https://finance.yahoo.co.jp/quote/{formatted_company_code[:4]}"
         formatted_output += f" {yahoo_finance_url}\n\n"
 
-        # RSSに追加する要素
         rss_items.append({
             "title": f"{item['company_name']} - {item['title']}",
             "link": url,
@@ -62,7 +64,6 @@ def format_output(items):
             "pubdate": item['pubdate']
         })
 
-        # 内訳集計
         if "プライム" in market_classification:
             prime_count += 1
         elif "スタンダード" in market_classification:
@@ -74,10 +75,14 @@ def format_output(items):
     return formatted_output.strip(), breakdown_message, rss_items
 
 def generate_rss(rss_items, target_day, breakdown_message):
+    if not rss_items:
+        print("RSSアイテムがありません。rss.xmlは生成されません。")
+        return
+
     fg = FeedGenerator()
     fg.title(f"{target_day.strftime('%m月%d日')}のサイバー攻撃関連適時開示")
     fg.link(href="https://example.com/rss.xml", rel="self")
-    fg.description(f"{breakdown_message.strip()}")
+    fg.description(breakdown_message.strip())
 
     for item in rss_items:
         fe = fg.add_entry()
@@ -86,12 +91,17 @@ def generate_rss(rss_items, target_day, breakdown_message):
         fe.description(item["description"])
         fe.pubDate(item["pubdate"])
 
-    fg.rss_file("rss.xml")  # RSSファイルを出力
+    # 出力先ディレクトリを確実に作成
+    output_dir = os.path.dirname(OUTPUT_RSS_FILE)
+    os.makedirs(output_dir, exist_ok=True)
+
+    fg.rss_file(OUTPUT_RSS_FILE)
+    print(f"✅ RSSフィードを {OUTPUT_RSS_FILE} に出力しました。")
 
 def main():
     today = datetime.now().date()
     target_day = today
-    url = "https://webapi.yanoshin.jp/webapi/tdnet/list/" + target_day.strftime("%Y%m%d") + ".json"
+    url = f"https://webapi.yanoshin.jp/webapi/tdnet/list/{target_day.strftime('%Y%m%d')}.json"
 
     items = fetch_data(url)
     keywords = ["サイバー攻撃", "漏えい", "漏洩", "ランサムウェア", "攻撃", "不正アクセス"]
@@ -103,9 +113,11 @@ def main():
         print(breakdown_message)
         print(output)
         generate_rss(rss_items, target_day, breakdown_message)
-        print("✅ RSSフィードを rss.xml に出力しました。")
     else:
         print(f"{target_day.strftime('%m月%d日')}はサイバー攻撃に関する適時開示がありませんでした")
+        # RSSファイルが存在しない場合に備えて空ファイルを作る（Actionsで mv 失敗を防ぐ）
+        with open(OUTPUT_RSS_FILE, "w", encoding="utf-8") as f:
+            f.write("")
 
 if __name__ == "__main__":
     main()

@@ -38,13 +38,17 @@ jobs:
 
       - name: rss.xmlをPagesブランチにコミットして公開
         run: |
-          mkdir public
-          mv rss.xml public/
-          cd public
-          git init
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add .
-          git commit -m "Auto-update RSS"
-          git branch -M gh-pages
-          git push -f https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
+          if [ -f rss.xml ]; then
+            mkdir -p public
+            mv rss.xml public/
+            cd public
+            git init
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add .
+            git commit -m "Auto-update RSS"
+            git branch -M gh-pages
+            git push -f https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
+          else
+            echo "rss.xml が存在しません。commitをスキップします。"
+          fi
