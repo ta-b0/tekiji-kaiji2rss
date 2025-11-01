@@ -5,6 +5,8 @@ on:
     - cron: '0 8 * * *'  # JSTで毎日17:00に実行
   workflow_dispatch:
 
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,7 +18,7 @@ jobs:
       - name: Pythonをセットアップ
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' 
+          python-version: '3.11'
 
       - name: 必要なライブラリをインストール
         run: pip install -r requirements.txt
