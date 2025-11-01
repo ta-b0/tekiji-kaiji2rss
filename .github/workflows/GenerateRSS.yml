@@ -1,12 +1,22 @@
 name: Generate RSS Feed
 
 on:
+  # 毎日17:00 JST に自動実行
   schedule:
-    - cron: '0 8 * * *'  # JSTで毎日17:00に実行
+    - cron: '0 8 * * *'  # JSTで毎日17:00
+  # 手動実行可能
   workflow_dispatch:
+  # push でも即時テスト実行可能
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 permissions:
-  contents: write
+  contents: write  # gh-pages に push するために必要
+
 jobs:
   build:
     runs-on: ubuntu-latest
